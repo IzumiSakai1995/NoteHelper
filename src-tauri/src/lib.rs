@@ -34,7 +34,10 @@ pub fn run() {
             create_map, get_maps, update_map, update_map_monsters, delete_map,
             create_buff, get_buffs, update_buff, delete_buff,
             apply_buff, remove_buff, get_player_buffs,
-            create_category, get_categories, update_category, delete_category
+            create_category, get_categories, update_category, delete_category,
+            create_monster_prefix, get_monster_prefixes, update_monster_prefix, delete_monster_prefix,
+            create_monster_rank, get_monster_ranks, update_monster_rank, delete_monster_rank,
+            get_game_settings, update_game_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -272,5 +272,163 @@ pub async fn init_db(database_url: &str) -> Result<PgPool, sqlx::Error> {
         "#
     ).execute(&pool).await?;
 
+    // Migration: Create monster_prefixes table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS monster_prefixes (
+            id BIGSERIAL PRIMARY KEY,
+            novel_id BIGINT REFERENCES novels(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            hp_modifier FLOAT8 DEFAULT 1.0,
+            attack_modifier FLOAT8 DEFAULT 1.0,
+            defense_modifier FLOAT8 DEFAULT 1.0
+        );
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Create monster_ranks table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS monster_ranks (
+            id BIGSERIAL PRIMARY KEY,
+            novel_id BIGINT REFERENCES novels(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            hp_modifier FLOAT8 DEFAULT 1.0,
+            attack_modifier FLOAT8 DEFAULT 1.0,
+            defense_modifier FLOAT8 DEFAULT 1.0
+        );
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Create game_settings table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS game_settings (
+            novel_id BIGINT PRIMARY KEY REFERENCES novels(id) ON DELETE CASCADE,
+            level_coefficient FLOAT8 DEFAULT 1.0
+        );
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add prefix_id and rank_id to monsters
+    sqlx::query(
+        r#"
+        ALTER TABLE monsters ADD COLUMN IF NOT EXISTS prefix_id BIGINT REFERENCES monster_prefixes(id) ON DELETE SET NULL;
+        "#
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        r#"
+        ALTER TABLE monsters ADD COLUMN IF NOT EXISTS rank_id BIGINT REFERENCES monster_ranks(id) ON DELETE SET NULL;
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add base_hp, base_attack, base_defense to monsters
+    // Initialize with existing values if they are 0 (which implies new column)
+    sqlx::query(
+        r#"
+        ALTER TABLE monsters ADD COLUMN IF NOT EXISTS base_hp INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+    
+    // Copy existing hp to base_hp if base_hp is 0 (newly added)
+    sqlx::query(
+        r#"
+        UPDATE monsters SET base_hp = hp WHERE base_hp = 0 AND hp > 0;
+        "#
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        r#"
+        ALTER TABLE monsters ADD COLUMN IF NOT EXISTS base_attack INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        r#"
+        UPDATE monsters SET base_attack = attack WHERE base_attack = 0 AND attack > 0;
+        "#
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        r#"
+        ALTER TABLE monsters ADD COLUMN IF NOT EXISTS base_defense INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        r#"
+        UPDATE monsters SET base_defense = defense WHERE base_defense = 0 AND defense > 0;
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add fixed_damage_reduction to monsters
+    sqlx::query(
+        r#"
+        ALTER TABLE monsters ADD COLUMN IF NOT EXISTS fixed_damage_reduction INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add parent_id to maps
+    sqlx::query(
+        r#"
+        ALTER TABLE maps ADD COLUMN IF NOT EXISTS parent_id BIGINT REFERENCES maps(id) ON DELETE SET NULL;
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add color to monster_ranks
+    sqlx::query(
+        r#"
+        ALTER TABLE monster_ranks ADD COLUMN IF NOT EXISTS color TEXT;
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add description to maps
+    sqlx::query(
+        r#"
+        ALTER TABLE maps ADD COLUMN IF NOT EXISTS description TEXT;
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add level and rarity to items
+    sqlx::query(
+        r#"
+        ALTER TABLE items ADD COLUMN IF NOT EXISTS level INT DEFAULT 1;
+        "#
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        r#"
+        ALTER TABLE items ADD COLUMN IF NOT EXISTS rarity TEXT;
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add effects to buffs (for dynamic formulas)
+    sqlx::query(
+        r#"
+        ALTER TABLE buffs ADD COLUMN IF NOT EXISTS effects JSONB;
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add max_hp and max_shield to players
+    sqlx::query(
+        r#"
+        ALTER TABLE players ADD COLUMN IF NOT EXISTS max_hp INT DEFAULT 100;
+        "#
+    ).execute(&pool).await?;
+    
+    // Set max_hp to hp (current) if it was just added
+    sqlx::query(
+        r#"
+        UPDATE players SET max_hp = hp WHERE max_hp = 100 AND hp > 100;
+        "#
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        r#"
+        ALTER TABLE players ADD COLUMN IF NOT EXISTS max_shield INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+
     Ok(pool)
 }
