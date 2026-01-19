@@ -1,6 +1,7 @@
 use crate::db::DbState;
 use crate::models::*;
 use tauri::State;
+use sqlx::Row;
 
 // Novel Commands
 #[tauri::command]
@@ -383,6 +384,66 @@ pub async fn update_item(
         .bind(category_id)
         .bind(level)
         .bind(rarity)
+        .bind(id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// Skill Commands
+#[tauri::command]
+pub async fn create_skill(
+    state: State<'_, DbState>,
+    novel_id: i64,
+    name: String,
+    description: Option<String>,
+    level: Option<i32>
+) -> Result<i64, String> {
+    let row: (i64,) = sqlx::query_as(
+        "INSERT INTO skills (novel_id, name, description, level) VALUES ($1, $2, $3, $4) RETURNING id"
+    )
+    .bind(novel_id)
+    .bind(name)
+    .bind(description)
+    .bind(level.unwrap_or(1))
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(row.0)
+}
+
+#[tauri::command]
+pub async fn get_skills(state: State<'_, DbState>, novel_id: i64) -> Result<Vec<Skill>, String> {
+    sqlx::query_as::<_, Skill>("SELECT * FROM skills WHERE novel_id = $1 ORDER BY id ASC")
+        .bind(novel_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_skill(
+    state: State<'_, DbState>,
+    id: i64,
+    name: String,
+    description: Option<String>,
+    level: i32
+) -> Result<(), String> {
+    sqlx::query("UPDATE skills SET name=$1, description=$2, level=$3 WHERE id=$4")
+        .bind(name)
+        .bind(description)
+        .bind(level)
+        .bind(id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_skill(state: State<'_, DbState>, id: i64) -> Result<(), String> {
+    sqlx::query("DELETE FROM skills WHERE id = $1")
         .bind(id)
         .execute(&state.pool)
         .await
@@ -825,4 +886,278 @@ pub async fn update_game_settings(
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// Player Template Commands
+#[tauri::command]
+pub async fn create_player_template(
+    state: State<'_, DbState>,
+    novel_id: i64,
+    name: String,
+    level: Option<i32>,
+    exp: Option<i64>,
+    strength: Option<i32>,
+    agility: Option<i32>,
+    intelligence: Option<i32>,
+    vitality: Option<i32>,
+    spirit: Option<i32>,
+    crit_chance: Option<i32>,
+    crit_dmg: Option<i32>,
+    deadly_chance: Option<i32>,
+    deadly_dmg: Option<i32>,
+    strength_to_phys_attack: Option<f64>,
+    strength_to_max_hp: Option<f64>,
+    agility_to_phys_attack: Option<f64>,
+    intelligence_to_mag_attack: Option<f64>,
+    intelligence_to_mag_defense: Option<f64>,
+    vitality_to_phys_defense: Option<f64>,
+    vitality_to_mag_defense: Option<f64>,
+    vitality_to_max_hp: Option<f64>,
+    spirit_to_mana_regen: Option<f64>,
+    spirit_to_mag_defense: Option<f64>
+) -> Result<i64, String> {
+    let lvl = level.unwrap_or(1);
+    let xp = exp.unwrap_or(0);
+    let strv = strength.unwrap_or(10) as f64;
+    let agiv = agility.unwrap_or(10) as f64;
+    let intv = intelligence.unwrap_or(10) as f64;
+    let vitv = vitality.unwrap_or(10) as f64;
+    let spiv = spirit.unwrap_or(10) as f64;
+
+    let s_pa = strength_to_phys_attack.unwrap_or(1.0);
+    let s_hp = strength_to_max_hp.unwrap_or(0.0);
+    let a_pa = agility_to_phys_attack.unwrap_or(1.0);
+    let i_ma = intelligence_to_mag_attack.unwrap_or(1.0);
+    let i_md = intelligence_to_mag_defense.unwrap_or(0.0);
+    let v_pd = vitality_to_phys_defense.unwrap_or(1.0);
+    let v_md = vitality_to_mag_defense.unwrap_or(0.5);
+    let v_hp = vitality_to_max_hp.unwrap_or(10.0);
+    let s_mr = spirit_to_mana_regen.unwrap_or(0.0);
+    let s_mg = spirit_to_mag_defense.unwrap_or(0.5);
+
+    let c_ch = crit_chance.unwrap_or(0);
+    let c_dm = crit_dmg.unwrap_or(0);
+    let d_ch = deadly_chance.unwrap_or(0);
+    let d_dm = deadly_dmg.unwrap_or(0);
+
+    let max_hp = (strv * s_hp + vitv * v_hp).round() as i32;
+    let attack = (strv * s_pa + agiv * a_pa + intv * i_ma).round() as i32;
+    let phys_defense = (vitv * v_pd).round() as i32;
+    let mag_defense = (intv * i_md + spiv * s_mg).round() as i32;
+
+    let row: (i64,) = sqlx::query_as(
+        r#"
+        INSERT INTO player_templates (
+            novel_id, name, level, exp, strength, agility, intelligence, vitality, spirit,
+            max_hp, attack, phys_defense, mag_defense,
+            crit_chance, crit_dmg, deadly_chance, deadly_dmg,
+            strength_to_phys_attack, strength_to_max_hp, agility_to_phys_attack,
+            intelligence_to_mag_attack, intelligence_to_mag_defense,
+            vitality_to_phys_defense, vitality_to_mag_defense, vitality_to_max_hp,
+            spirit_to_mana_regen, spirit_to_mag_defense
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9,
+            $10, $11, $12, $13,
+            $14, $15, $16, $17,
+            $18, $19, $20,
+            $21, $22,
+            $23, $24, $25,
+            $26, $27
+        )
+        RETURNING id
+        "#
+    )
+    .bind(novel_id)
+    .bind(name)
+    .bind(lvl)
+    .bind(xp)
+    .bind(strv as i32)
+    .bind(agiv as i32)
+    .bind(intv as i32)
+    .bind(vitv as i32)
+    .bind(spiv as i32)
+    .bind(max_hp)
+    .bind(attack)
+    .bind(phys_defense)
+    .bind(mag_defense)
+    .bind(c_ch)
+    .bind(c_dm)
+    .bind(d_ch)
+    .bind(d_dm)
+    .bind(s_pa)
+    .bind(s_hp)
+    .bind(a_pa)
+    .bind(i_ma)
+    .bind(i_md)
+    .bind(v_pd)
+    .bind(v_md)
+    .bind(v_hp)
+    .bind(s_mr)
+    .bind(s_mg)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(row.0)
+}
+
+#[tauri::command]
+pub async fn get_player_templates(state: State<'_, DbState>, novel_id: i64) -> Result<Vec<PlayerTemplate>, String> {
+    sqlx::query_as::<_, PlayerTemplate>("SELECT * FROM player_templates WHERE novel_id = $1 ORDER BY id ASC")
+        .bind(novel_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_player_template(
+    state: State<'_, DbState>,
+    id: i64,
+    name: String,
+    level: i32,
+    exp: i64,
+    strength: i32,
+    agility: i32,
+    intelligence: i32,
+    vitality: i32,
+    spirit: i32,
+    crit_chance: i32,
+    crit_dmg: i32,
+    deadly_chance: i32,
+    deadly_dmg: i32,
+    strength_to_phys_attack: f64,
+    strength_to_max_hp: f64,
+    agility_to_phys_attack: f64,
+    intelligence_to_mag_attack: f64,
+    intelligence_to_mag_defense: f64,
+    vitality_to_phys_defense: f64,
+    vitality_to_mag_defense: f64,
+    vitality_to_max_hp: f64,
+    spirit_to_mana_regen: f64,
+    spirit_to_mag_defense: f64
+) -> Result<(), String> {
+    let strv = strength as f64;
+    let agiv = agility as f64;
+    let intv = intelligence as f64;
+    let vitv = vitality as f64;
+    let spiv = spirit as f64;
+
+    let max_hp = (strv * strength_to_max_hp + vitv * vitality_to_max_hp).round() as i32;
+    let attack = (strv * strength_to_phys_attack + agiv * agility_to_phys_attack + intv * intelligence_to_mag_attack).round() as i32;
+    let phys_defense = (vitv * vitality_to_phys_defense).round() as i32;
+    let mag_defense = (intv * intelligence_to_mag_defense + spiv * spirit_to_mag_defense).round() as i32;
+
+    sqlx::query(
+        r#"
+        UPDATE player_templates 
+        SET name=$1, level=$2, exp=$3, strength=$4, agility=$5, intelligence=$6, vitality=$7, spirit=$8,
+            max_hp=$9, attack=$10, phys_defense=$11, mag_defense=$12,
+            crit_chance=$13, crit_dmg=$14, deadly_chance=$15, deadly_dmg=$16,
+            strength_to_phys_attack=$13, strength_to_max_hp=$14, agility_to_phys_attack=$15,
+            intelligence_to_mag_attack=$17, intelligence_to_mag_defense=$18,
+            vitality_to_phys_defense=$19, vitality_to_mag_defense=$20, vitality_to_max_hp=$21,
+            spirit_to_mana_regen=$22, spirit_to_mag_defense=$23
+        WHERE id=$24
+        "#
+    )
+    .bind(name)
+    .bind(level)
+    .bind(exp)
+    .bind(strength)
+    .bind(agility)
+    .bind(intelligence)
+    .bind(vitality)
+    .bind(spirit)
+    .bind(max_hp)
+    .bind(attack)
+    .bind(phys_defense)
+    .bind(mag_defense)
+    .bind(crit_chance)
+    .bind(crit_dmg)
+    .bind(deadly_chance)
+    .bind(deadly_dmg)
+    .bind(strength_to_phys_attack)
+    .bind(strength_to_max_hp)
+    .bind(agility_to_phys_attack)
+    .bind(intelligence_to_mag_attack)
+    .bind(intelligence_to_mag_defense)
+    .bind(vitality_to_phys_defense)
+    .bind(vitality_to_mag_defense)
+    .bind(vitality_to_max_hp)
+    .bind(spirit_to_mana_regen)
+    .bind(spirit_to_mag_defense)
+    .bind(id)
+    .execute(&state.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_player_template(state: State<'_, DbState>, id: i64) -> Result<(), String> {
+    sqlx::query("DELETE FROM player_templates WHERE id = $1")
+        .bind(id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn create_player_from_template(
+    state: State<'_, DbState>,
+    novel_id: i64,
+    template_id: i64,
+    name: String
+) -> Result<i64, String> {
+    let tpl = sqlx::query_as::<_, PlayerTemplate>("SELECT * FROM player_templates WHERE id = $1 AND novel_id = $2")
+        .bind(template_id)
+        .bind(novel_id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let row: (i64,) = sqlx::query_as(
+        r#"
+        INSERT INTO players (
+            novel_id, name, level, exp, 
+            hp, max_hp, shield, max_shield, 
+            attack, phys_defense, mag_defense,
+            strength, agility, intelligence, vitality, spirit,
+            crit_chance, crit_dmg, deadly_chance, deadly_dmg,
+            equipment
+        ) VALUES (
+            $1, $2, $3, $4,
+            $5, $6, 0, 0,
+            $7, $8, $9,
+            $10, $11, $12, $13, $14,
+            $15, $16, $17, $18,
+            NULL
+        )
+        RETURNING id
+        "#
+    )
+    .bind(novel_id)
+    .bind(name)
+    .bind(tpl.level)
+    .bind(tpl.exp)
+    .bind(tpl.max_hp)
+    .bind(tpl.max_hp)
+    .bind(tpl.attack)
+    .bind(tpl.phys_defense)
+    .bind(tpl.mag_defense)
+    .bind(tpl.strength)
+    .bind(tpl.agility)
+    .bind(tpl.intelligence)
+    .bind(tpl.vitality)
+    .bind(tpl.spirit)
+    .bind(tpl.crit_chance)
+    .bind(tpl.crit_dmg)
+    .bind(tpl.deadly_chance)
+    .bind(tpl.deadly_dmg)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(row.0)
 }

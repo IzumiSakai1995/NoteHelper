@@ -31,13 +31,16 @@ pub fn run() {
             create_player, get_players, update_player_stats, update_player_equipment,
             create_monster, get_monsters, update_monster,
             create_item, get_items, update_item, delete_item,
+            create_skill, get_skills, update_skill, delete_skill,
             create_map, get_maps, update_map, update_map_monsters, delete_map,
             create_buff, get_buffs, update_buff, delete_buff,
             apply_buff, remove_buff, get_player_buffs,
             create_category, get_categories, update_category, delete_category,
             create_monster_prefix, get_monster_prefixes, update_monster_prefix, delete_monster_prefix,
             create_monster_rank, get_monster_ranks, update_monster_rank, delete_monster_rank,
-            get_game_settings, update_game_settings
+            get_game_settings, update_game_settings,
+            create_player_template, get_player_templates, update_player_template, delete_player_template,
+            create_player_from_template
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

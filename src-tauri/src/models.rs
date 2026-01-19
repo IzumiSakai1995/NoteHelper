@@ -149,6 +149,8 @@ pub struct Skill {
     pub novel_id: i64,
     pub name: String,
     pub description: Option<String>,
+    #[sqlx(default)]
+    pub level: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -176,4 +178,36 @@ pub struct Map {
     pub order_num: i32,
     pub monsters: Option<serde_json::Value>,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct PlayerTemplate {
+    pub id: i64,
+    pub novel_id: i64,
+    pub name: String,
+    pub level: i32,
+    pub exp: i64,
+    pub strength: i32,
+    pub agility: i32,
+    pub intelligence: i32,
+    pub vitality: i32,
+    pub spirit: i32,
+    pub max_hp: i32,
+    pub attack: i32,
+    pub phys_defense: i32,
+    pub mag_defense: i32,
+    pub crit_chance: i32,
+    pub crit_dmg: i32,
+    pub deadly_chance: i32,
+    pub deadly_dmg: i32,
+    pub strength_to_phys_attack: f64,
+    pub strength_to_max_hp: f64,
+    pub agility_to_phys_attack: f64,
+    pub intelligence_to_mag_attack: f64,
+    pub intelligence_to_mag_defense: f64,
+    pub vitality_to_phys_defense: f64,
+    pub vitality_to_mag_defense: f64,
+    pub vitality_to_max_hp: f64,
+    pub spirit_to_mana_regen: f64,
+    pub spirit_to_mag_defense: f64,
 }

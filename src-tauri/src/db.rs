@@ -46,6 +46,63 @@ pub async fn init_db(database_url: &str) -> Result<PgPool, sqlx::Error> {
 
     sqlx::query(
         r#"
+        CREATE TABLE IF NOT EXISTS player_templates (
+            id BIGSERIAL PRIMARY KEY,
+            novel_id BIGINT REFERENCES novels(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            level INT DEFAULT 1,
+            exp BIGINT DEFAULT 0,
+            strength INT DEFAULT 10,
+            agility INT DEFAULT 10,
+            intelligence INT DEFAULT 10,
+            vitality INT DEFAULT 10,
+            spirit INT DEFAULT 10,
+            max_hp INT DEFAULT 100,
+            attack INT DEFAULT 10,
+            phys_defense INT DEFAULT 0,
+            mag_defense INT DEFAULT 0,
+            strength_to_phys_attack FLOAT8 DEFAULT 1.0,
+            strength_to_max_hp FLOAT8 DEFAULT 0.0,
+            agility_to_phys_attack FLOAT8 DEFAULT 1.0,
+            intelligence_to_mag_attack FLOAT8 DEFAULT 1.0,
+            intelligence_to_mag_defense FLOAT8 DEFAULT 0.0,
+            vitality_to_phys_defense FLOAT8 DEFAULT 1.0,
+            vitality_to_mag_defense FLOAT8 DEFAULT 0.5,
+            vitality_to_max_hp FLOAT8 DEFAULT 10.0,
+            spirit_to_mana_regen FLOAT8 DEFAULT 0.0,
+            spirit_to_mag_defense FLOAT8 DEFAULT 0.5,
+            crit_chance INT DEFAULT 0,
+            crit_dmg INT DEFAULT 0,
+            deadly_chance INT DEFAULT 0,
+            deadly_dmg INT DEFAULT 0
+        );
+        "#
+    ).execute(&pool).await?;
+
+    // Migration: Add crit/deadly fields to player_templates
+    sqlx::query(
+        r#"
+        ALTER TABLE player_templates ADD COLUMN IF NOT EXISTS crit_chance INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+    sqlx::query(
+        r#"
+        ALTER TABLE player_templates ADD COLUMN IF NOT EXISTS crit_dmg INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+    sqlx::query(
+        r#"
+        ALTER TABLE player_templates ADD COLUMN IF NOT EXISTS deadly_chance INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+    sqlx::query(
+        r#"
+        ALTER TABLE player_templates ADD COLUMN IF NOT EXISTS deadly_dmg INT DEFAULT 0;
+        "#
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        r#"
         CREATE TABLE IF NOT EXISTS players (
             id BIGSERIAL PRIMARY KEY,
             novel_id BIGINT REFERENCES novels(id) ON DELETE CASCADE,
@@ -111,7 +168,8 @@ pub async fn init_db(database_url: &str) -> Result<PgPool, sqlx::Error> {
             id BIGSERIAL PRIMARY KEY,
             novel_id BIGINT REFERENCES novels(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
-            description TEXT
+            description TEXT,
+            level INT DEFAULT 1
         );
         "#
     ).execute(&pool).await?;
