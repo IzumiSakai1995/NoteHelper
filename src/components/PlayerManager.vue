@@ -6,8 +6,16 @@
     <el-table :data="players" style="width: 100%" @row-dblclick="editPlayer">
       <el-table-column prop="name" :label="$t('common.name')" />
       <el-table-column prop="level" :label="$t('common.level')" />
-      <el-table-column prop="hp" :label="$t('player.hp')" />
-      <el-table-column prop="shield" :label="$t('player.shield')" />
+      <el-table-column :label="$t('player.hp')">
+        <template #default="scope">
+          {{ scope.row.hp }} / {{ scope.row.max_hp }}
+        </template>
+      </el-table-column>
+      <el-table-column :label="$t('player.shield')">
+        <template #default="scope">
+          {{ scope.row.shield }} / {{ scope.row.max_shield }}
+        </template>
+      </el-table-column>
       <el-table-column prop="attack" :label="$t('player.attack')" />
       <el-table-column :label="$t('common.actions')">
         <template #default="scope">
@@ -21,6 +29,11 @@
       <el-form :model="form">
         <el-form-item :label="$t('common.name')">
           <el-input v-model="form.name" />
+        </el-form-item>
+        <el-form-item :label="$t('template.select_template')">
+          <el-select v-model="form.templateId" clearable :placeholder="$t('template.select_template')">
+            <el-option v-for="tpl in templates" :key="tpl.id" :label="tpl.name" :value="tpl.id" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -37,14 +50,14 @@
           <div class="total-stats" style="margin-bottom: 20px">
             <el-descriptions :title="$t('player.total_attributes')" :column="2" border>
               <el-descriptions-item :label="$t('player.hp')">
-                {{ totalStats.hp }}
-                <span v-if="equipmentStats.hp > 0" class="equip-bonus">(Eq: +{{ equipmentStats.hp }})</span>
-                <span v-if="buffStats.hp > 0" class="buff-bonus">(Buff: +{{ buffStats.hp }})</span>
+                {{ totalStats.hp }} / {{ totalStats.max_hp }}
+                <span v-if="equipmentStats.max_hp > 0" class="equip-bonus">(Eq: +{{ equipmentStats.max_hp }})</span>
+                <span v-if="buffStats.max_hp > 0" class="buff-bonus">(Buff: +{{ buffStats.max_hp }})</span>
               </el-descriptions-item>
               <el-descriptions-item :label="$t('player.shield')">
-                {{ totalStats.shield }}
-                <span v-if="equipmentStats.shield > 0" class="equip-bonus">(Eq: +{{ equipmentStats.shield }})</span>
-                <span v-if="buffStats.shield > 0" class="buff-bonus">(Buff: +{{ buffStats.shield }})</span>
+                {{ totalStats.shield }} / {{ totalStats.max_shield }}
+                <span v-if="equipmentStats.max_shield > 0" class="equip-bonus">(Eq: +{{ equipmentStats.max_shield }})</span>
+                <span v-if="buffStats.max_shield > 0" class="buff-bonus">(Buff: +{{ buffStats.max_shield }})</span>
               </el-descriptions-item>
               <el-descriptions-item :label="$t('player.attack')">
                 {{ totalStats.attack }}
@@ -126,8 +139,20 @@
 
           <el-form :model="editForm" label-width="100px">
             <el-row>
-              <el-col :span="12"><el-form-item :label="$t('player.hp')"><el-input-number v-model="editForm.hp" /></el-form-item></el-col>
-              <el-col :span="12"><el-form-item :label="$t('player.shield')"><el-input-number v-model="editForm.shield" /></el-form-item></el-col>
+              <el-col :span="12">
+                <el-form-item :label="$t('player.hp')">
+                  <el-input-number v-model="editForm.hp" :max="editForm.max_hp" placeholder="Current" style="width: 120px" />
+                  <span style="margin: 0 5px">/</span>
+                  <el-input-number v-model="editForm.max_hp" placeholder="Max" style="width: 120px" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item :label="$t('player.shield')">
+                  <el-input-number v-model="editForm.shield" :max="editForm.max_shield" placeholder="Current" style="width: 120px" />
+                  <span style="margin: 0 5px">/</span>
+                  <el-input-number v-model="editForm.max_shield" placeholder="Max" style="width: 120px" />
+                </el-form-item>
+              </el-col>
             </el-row>
             <el-row>
               <el-col :span="12"><el-form-item :label="$t('player.attack')"><el-input-number v-model="editForm.attack" /></el-form-item></el-col>
@@ -236,6 +261,7 @@ const props = defineProps({
 })
 
 const players = ref([])
+const templates = ref([])
 const items = ref([])
 const activeBuffs = ref([])
 const availableBuffs = ref([])
@@ -243,7 +269,7 @@ const showAddDialog = ref(false)
 const showEditDialog = ref(false)
 const showApplyBuffDialog = ref(false)
 const activeTab = ref('stats')
-const form = ref({ name: '' })
+const form = ref({ name: '', templateId: null })
 const editForm = ref({})
 const equipmentForm = ref({})
 
@@ -285,6 +311,15 @@ const loadItems = async () => {
   }
 }
 
+const loadTemplates = async () => {
+  if (!props.novelId) return
+  try {
+    templates.value = await invoke('get_player_templates', { novelId: props.novelId })
+  } catch (e) {
+    console.error(e)
+  }
+}
+
 const loadAvailableBuffs = async () => {
   if (!props.novelId) return
   try {
@@ -307,6 +342,11 @@ const getItemsForSlot = (types) => {
   return items.value.filter(item => types.includes(item.item_type))
 }
 
+/**
+ * 获取增益的剩余时间
+ * @param {Object} buff - 增益对象
+ * @returns {string} - 剩余时间，单位秒，或 '∞' 表示无限长
+ */
 const getRemainingTime = (buff) => {
   if (!buff.duration) return '∞'
   const applied = new Date(buff.applied_at).getTime()
@@ -330,9 +370,18 @@ const getRemainingTime = (buff) => {
 
 const createPlayer = async () => {
   try {
-    await invoke('create_player', { novelId: props.novelId, name: form.value.name })
+    if (form.value.templateId) {
+      const chosen = templates.value.find(t => t.id === form.value.templateId)
+      await invoke('create_player_from_template', {
+        novelId: props.novelId,
+        templateId: form.value.templateId,
+        name: form.value.name || (chosen ? chosen.name : 'Player')
+      })
+    } else {
+      await invoke('create_player', { novelId: props.novelId, name: form.value.name })
+    }
     showAddDialog.value = false
-    form.value.name = ''
+    form.value = { name: '', templateId: null }
     loadPlayers()
     ElMessage.success('Player created')
   } catch (e) {
@@ -393,7 +442,7 @@ const removeBuff = async (id) => {
 // Calculate equipment stats
 const equipmentStats = computed(() => {
   const stats = {
-    hp: 0, shield: 0, attack: 0, phys_defense: 0, mag_defense: 0,
+    hp: 0, max_hp: 0, shield: 0, max_shield: 0, attack: 0, phys_defense: 0, mag_defense: 0,
     strength: 0, agility: 0, intelligence: 0,
     vitality: 0, spirit: 0,
     crit_chance: 0, crit_dmg: 0, deadly_chance: 0, deadly_dmg: 0,
@@ -409,6 +458,10 @@ const equipmentStats = computed(() => {
         const val = Number(item.attributes[attrKey]) || 0
         if (stats[attrKey] !== undefined) {
           stats[attrKey] += val
+        } else if (attrKey === 'hp') {
+           stats.max_hp += val // Equipment HP usually adds to Max HP
+           // stats.hp += val // Should it add to current HP? Usually not directly, but for display total it might be confusing.
+           // Let's assume eq adds to Max HP primarily.
         } else if (attrKey === 'phys_attack' || attrKey === 'mag_attack') {
              stats.attack += val 
         } else {
@@ -422,7 +475,7 @@ const equipmentStats = computed(() => {
 
 const buffStats = computed(() => {
   const stats = {
-    hp: 0, shield: 0, attack: 0, phys_defense: 0, mag_defense: 0,
+    hp: 0, max_hp: 0, shield: 0, max_shield: 0, attack: 0, phys_defense: 0, mag_defense: 0,
     strength: 0, agility: 0, intelligence: 0,
     vitality: 0, spirit: 0,
     crit_chance: 0, crit_dmg: 0, deadly_chance: 0, deadly_dmg: 0,
@@ -435,6 +488,8 @@ const buffStats = computed(() => {
         const val = Number(buff.attributes[key]) || 0
         if (stats[key] !== undefined) {
           stats[key] += val
+        } else if (key === 'hp') {
+           stats.max_hp += val
         } else if (key === 'phys_attack' || key === 'mag_attack') {
           stats.attack += val
         } else {
@@ -452,8 +507,10 @@ const totalStats = computed(() => {
   const equip = equipmentStats.value
   const buff = buffStats.value
   return {
-    hp: (base.hp || 0) + equip.hp + buff.hp,
-    shield: (base.shield || 0) + equip.shield + buff.shield,
+    hp: (base.hp || 0), // Current HP is absolute
+    max_hp: (base.max_hp || 0) + equip.max_hp + buff.max_hp,
+    shield: (base.shield || 0),
+    max_shield: (base.max_shield || 0) + equip.max_shield + buff.max_shield,
     attack: (base.attack || 0) + equip.attack + buff.attack,
     phys_defense: (base.phys_defense || 0) + equip.phys_defense + buff.phys_defense,
     mag_defense: (base.mag_defense || 0) + equip.mag_defense + buff.mag_defense,
@@ -474,7 +531,9 @@ const updatePlayer = async () => {
     await invoke('update_player_stats', {
       id: editForm.value.id,
       hp: editForm.value.hp,
+      maxHp: editForm.value.max_hp,
       shield: editForm.value.shield,
+      maxShield: editForm.value.max_shield,
       attack: editForm.value.attack,
       physDefense: editForm.value.phys_defense,
       magDefense: editForm.value.mag_defense,
@@ -519,10 +578,12 @@ const saveAll = async () => {
 watch(() => props.novelId, () => {
   loadPlayers()
   loadItems()
+  loadTemplates()
 })
 onMounted(() => {
   loadPlayers()
   loadItems()
+  loadTemplates()
 })
 </script>
 

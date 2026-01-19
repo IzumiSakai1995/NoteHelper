@@ -18,7 +18,10 @@ export default {
     attribute_value: 'Attribute Value',
     add_custom_attribute: 'Add Custom Attribute',
     expand_all: 'Expand All',
-    collapse_all: 'Collapse All'
+    collapse_all: 'Collapse All',
+    player: 'Player',
+    monster: 'Monster',
+    duration: 'Duration'
   },
   novel: {
     title: 'Novel Manager',
@@ -31,9 +34,11 @@ export default {
     monsters: 'Monsters',
     items: 'Items',
     maps: 'Maps',
+    skills: 'Skills',
     calculator: 'Damage Calculator',
     buffs: 'Buffs',
-    categories: 'Categories'
+    categories: 'Categories',
+    templates: 'Templates'
   },
   player: {
     add: 'Add Player',
@@ -47,6 +52,7 @@ export default {
     hp: 'HP',
     shield: 'Shield',
     attack: 'Attack',
+    defense: 'Defense',
     phys_attack: 'Phys Attack',
     mag_attack: 'Mag Attack',
     phys_defense: 'Phys Defense',
@@ -141,6 +147,28 @@ export default {
     select_buff: 'Select Buff',
     remove: 'Remove',
     remaining: 'Time Left',
-    attributes: 'Attributes'
+    attributes: 'Attributes',
+    target_stat: 'Target Stat',
+    modifier_type: 'Modifier Type',
+    formula: 'Formula',
+    dynamic_effects: 'Dynamic Effects',
+    variables_hint: 'Available variables: hp, max_hp, hp_pct, level, str, agi, int, vit, spi'
+  }
+  ,
+  skill: {
+    add: 'Add Skill',
+    edit: 'Edit Skill',
+    level: 'Skill Level',
+    management: 'Skill Management'
+  },
+  template: {
+    management: 'Template Management',
+    add: 'Add Template',
+    edit: 'Edit Template',
+    base_stats: 'Base Stats',
+    coefficients: 'Conversion Coefficients',
+    preview: 'Preview',
+    create_from: 'Create Player From Template',
+    select_template: 'Select Template'
   }
 }

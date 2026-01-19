@@ -18,7 +18,10 @@ export default {
     attribute_value: '属性值',
     add_custom_attribute: '添加自定义属性',
     expand_all: '展开全部',
-    collapse_all: '折叠全部'
+    collapse_all: '折叠全部',
+    player: '角色',
+    monster: '怪物',
+    duration: '持续时间'
   },
   novel: {
     title: '小说管理',
@@ -31,9 +34,11 @@ export default {
     monsters: '怪物',
     items: '装备',
     maps: '地图',
+    skills: '技能',
     calculator: '伤害计算器',
     buffs: '增益',
-    categories: '分类'
+    categories: '分类',
+    templates: '角色模板'
   },
   player: {
     add: '添加角色',
@@ -47,6 +52,7 @@ export default {
     hp: '生命值',
     shield: '护盾',
     attack: '攻击力',
+    defense: '防御力',
     phys_attack: '物理攻击',
     mag_attack: '魔法攻击',
     phys_defense: '物理防御',
@@ -141,6 +147,28 @@ export default {
     select_buff: '选择增益',
     remove: '移除',
     remaining: '剩余时间',
-    attributes: '属性加成'
+    attributes: '属性加成',
+    target_stat: '目标属性',
+    modifier_type: '修改类型',
+    formula: '公式',
+    dynamic_effects: '动态效果',
+    variables_hint: '可用变量: hp, max_hp, hp_pct, level, str, agi, int, vit, spi'
+  }
+  ,
+  skill: {
+    add: '新增技能',
+    edit: '编辑技能',
+    level: '技能等级',
+    management: '技能管理'
+  },
+  template: {
+    management: '模板管理',
+    add: '新增模板',
+    edit: '编辑模板',
+    base_stats: '基础属性',
+    coefficients: '转换系数',
+    preview: '预览',
+    create_from: '根据模板创建角色',
+    select_template: '选择模板'
   }
 }
